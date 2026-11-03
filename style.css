@@ -6,13 +6,6 @@
   --tabbar-h:64px; --safe-b:env(safe-area-inset-bottom,0px);
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){
-  :root{
-    --bg:#0f1716; --card:#18221f; --ink:#e7efed; --muted:#93a4a0; --line:#26332f;
-    --primary:#2bb3a3; --primary-ink:#06201d; --primary-soft:#173a35;
-    --accent:#ff8466; --accent-soft:#3a201a; --shadow:none; color-scheme:dark;
-  }
-}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);
   font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
@@ -171,7 +164,6 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 .toast{position:fixed;left:50%;bottom:calc(var(--tabbar-h) + var(--safe-b) + 16px);transform:translateX(-50%);background:#1d2a2a;color:#fff;padding:10px 16px;border-radius:12px;font-size:13px;z-index:50;max-width:90vw}
 
 .stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-@media (prefers-color-scheme:dark){.bill{filter:brightness(.92)}}
 
 /* wallet save */
 .save-pill{position:absolute;z-index:2;right:12px;top:12px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);color:inherit;border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700}
