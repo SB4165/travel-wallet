@@ -94,7 +94,7 @@ $('#rateDialog').addEventListener('close', () => {
   } else if (act === 'refresh') loadRate(true);
 });
 
-function refreshMoney() { renderWalletTotals(); renderCalc(); if (typeof renderPay === 'function') renderPay(); }
+function refreshMoney() { renderWalletTotals(); renderCalc(); if (typeof renderPay === 'function') { renderPay(); renderCashPlan(); renderCharge(); renderChgForm(); } }
 
 // ---------- tabs ----------
 let currentTab = store.get('tw.tab', 'wallet');
@@ -104,6 +104,7 @@ function showTab(name) {
   $$('.view').forEach(v => (v.hidden = v.dataset.view !== name));
   if (name === 'plan') loadPlan();
   if (name === 'pay' && typeof renderCashPlan === 'function') renderCashPlan();
+  if (name === 'charge' && typeof renderChgForm === 'function') renderChgForm();
   window.scrollTo(0, 0);
 }
 $$('.tab').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -113,7 +114,7 @@ const wallet = store.get('tw.wallet', {});
 function renderWallet() {
   $('#noteList').innerHTML = DENOMS.map(d => `
     <li class="note" data-v="${d.v}">
-      <div class="bill" style="--bill:${d.c}">${fmt(d.v)}<small>₫</small></div>
+      <div class="bill" style="--bill:${d.c}">${fmt(d.v)}₫<small class="bill-krw">≈${fmt(toKrw(d.v))}원</small></div>
       <div class="stepper">
         <button type="button" data-d="-1" aria-label="${fmt(d.v)}동 1장 빼기">−</button>
         <input type="number" inputmode="numeric" min="0" step="1" value="${wallet[d.v] || 0}" aria-label="${fmt(d.v)}동 장수">
@@ -129,6 +130,7 @@ function renderWalletTotals() {
     const v = +li.dataset.v, n = wallet[v] || 0, s = v * n;
     total += s; count += n;
     li.classList.toggle('has', n > 0);
+    li.querySelector('.bill-krw').textContent = `≈${fmt(toKrw(v))}원`;
     li.querySelector('.sub').innerHTML = `<b>${fmt(s)}₫</b>≈${fmt(toKrw(s))}원`;
   });
   $$('.js-wallet-vnd').forEach(e => (e.textContent = fmt(total)));
@@ -248,7 +250,9 @@ const CATS = [
 ];
 const catColor = k => (CATS.find(c => c.k === k) || CATS[CATS.length - 1]).c;
 const pays = store.get('tw.pays', []);
-const draft = { cat: '식사', method: 'cash', pay: {}, change: {}, touched: false };
+const draft = { cat: '식사', method: 'cash', cur: 'VND', pay: {}, change: {}, touched: false };
+const isKrw = p => p.cur === 'KRW';
+const krwOf = p => isKrw(p) ? p.amount : p.amount * (p.rate || krwPerVnd());
 const parseAmt = s => parseInt(String(s).replace(/[^\d]/g, ''), 10) || 0;
 const sumBills = m => Object.entries(m).reduce((a, [v, n]) => a + v * n, 0);
 const billsText = m => DENOMS.filter(d => m[d.v]).map(d => `${fmt(d.v / 1000)}k×${m[d.v]}`).join(' + ');
@@ -284,9 +288,9 @@ function renderCatChips() {
   $('#payCats').innerHTML = CATS.map(c => `<button type="button" class="cat ${c.k === draft.cat ? 'active' : ''}" style="--c:${c.c}" data-k="${c.k}">${c.k}</button>`).join('');
 }
 function renderCashPlan() {
-  const amount = parseAmt($('#payAmount').value);
-  $('#payAmountKrw').textContent = `≈ ${fmt(toKrw(amount))}원`;
-  const box = $('#cashBox'); box.hidden = draft.method !== 'cash';
+  const amount = parseAmt($('#payAmount').value), r = krwPerVnd();
+  $('#payAmountKrw').textContent = draft.cur === 'KRW' ? `≈ ${r ? fmt(amount / r) : '-'}₫` : `≈ ${fmt(toKrw(amount))}원`;
+  const box = $('#cashBox'); box.hidden = draft.method !== 'cash' || draft.cur === 'KRW';
   if (box.hidden) return;
   const deduct = $('#payDeduct').checked, el = $('#cashPlan');
   if (!deduct || !amount) { el.innerHTML = ''; return; }
@@ -332,6 +336,12 @@ $('#payMethod').addEventListener('click', e => {
   renderCashPlan();
 });
 $('#payDeduct').addEventListener('change', renderCashPlan);
+function setPayCur(c) {
+  draft.cur = c;
+  $$('#payCur button').forEach(x => x.classList.toggle('active', x.dataset.c === c));
+  resetDraft(); renderCashPlan();
+}
+$('#payCur').addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (b) setPayCur(b.dataset.c); });
 $('#cashPlan').addEventListener('click', e => {
   if (e.target.id === 'planReset') { resetDraft(); return renderCashPlan(); }
   const b = e.target.closest('button[data-t]'); if (!b) return;
@@ -344,12 +354,12 @@ $('#payForm').addEventListener('submit', e => {
   e.preventDefault();
   const amount = parseAmt($('#payAmount').value);
   if (!amount) return toast('금액을 입력하세요');
-  const cash = draft.method === 'cash', deduct = cash && $('#payDeduct').checked;
+  const cash = draft.method === 'cash', deduct = cash && draft.cur === 'VND' && $('#payDeduct').checked;
   if (deduct && !draft.valid) return toast('낼 지폐/거스름돈을 확인하세요');
   const ts = new Date($('#payTime').value || Date.now()).getTime() || Date.now();
   const rec = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts, amount,
-    memo: $('#payMemo').value.trim(), cat: draft.cat, method: draft.method, rate: krwPerVnd(),
+    memo: $('#payMemo').value.trim(), cat: draft.cat, method: draft.method, cur: draft.cur, rate: krwPerVnd(),
     applied: deduct, pay: deduct ? { ...draft.pay } : {}, change: deduct ? { ...draft.change } : {},
   };
   if (deduct) {
@@ -367,7 +377,7 @@ $('#payList').addEventListener('click', e => {
   const b = e.target.closest('.pi-del'); if (!b) return;
   const i = pays.findIndex(p => p.id === b.dataset.id); if (i < 0) return;
   const r = pays[i];
-  if (!confirm(`'${r.memo || r.cat}' ${fmt(r.amount)}₫ 기록을 삭제할까요?${r.applied ? '\n지갑 지폐도 원래대로 되돌립니다.' : ''}`)) return;
+  if (!confirm(`'${r.memo || r.cat}' ${fmt(r.amount)}${isKrw(r) ? '원' : '₫'} 기록을 삭제할까요?${r.applied ? '\n지갑 지폐도 원래대로 되돌립니다.' : ''}`)) return;
   if (r.applied) {
     for (const [v, n] of Object.entries(r.pay)) wallet[v] = (wallet[v] || 0) + n;
     for (const [v, n] of Object.entries(r.change)) wallet[v] = Math.max(0, (wallet[v] || 0) - n);
@@ -381,12 +391,16 @@ $('#payList').addEventListener('click', e => {
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 function renderPay() {
   if (!$('#payList')) return;
-  const krwOf = p => p.amount * (p.rate || krwPerVnd());
-  const total = pays.reduce((a, p) => a + p.amount, 0);
-  $('#paySum').textContent = fmt(total);
-  $('#paySumKrw').textContent = fmt(pays.reduce((a, p) => a + krwOf(p), 0));
-  $('#payCash').textContent = fmt(pays.filter(p => p.method === 'cash').reduce((a, p) => a + p.amount, 0));
-  $('#payCard').textContent = fmt(pays.filter(p => p.method === 'card').reduce((a, p) => a + p.amount, 0));
+  const vnd = pays.filter(p => !isKrw(p)), krw = pays.filter(isKrw);
+  const sumV = vnd.reduce((s, p) => s + p.amount, 0), sumK = krw.reduce((s, p) => s + p.amount, 0);
+  const all = pays.reduce((s, p) => s + krwOf(p), 0);
+  $('#paySum').textContent = fmt(sumV);
+  $('#paySumKrw').textContent = fmt(vnd.reduce((s, p) => s + krwOf(p), 0));
+  $('#payCash').textContent = fmt(vnd.filter(p => p.method === 'cash').reduce((s, p) => s + p.amount, 0));
+  $('#payCard').textContent = fmt(vnd.filter(p => p.method === 'card').reduce((s, p) => s + p.amount, 0));
+  $('#payKrwLine').hidden = !krw.length;
+  $('#payKrw').textContent = fmt(sumK);
+  $('#payAllKrw').textContent = fmt(all);
   $('#payCount').textContent = pays.length ? `· ${pays.length}건` : '';
   const groups = {};
   [...pays].sort((a, b) => b.ts - a.ts).forEach(p => {
@@ -394,14 +408,17 @@ function renderPay() {
     (groups[key] = groups[key] || []).push(p);
   });
   $('#payList').innerHTML = Object.keys(groups).length ? Object.entries(groups).map(([k, list]) => {
-    const sum = list.reduce((a, p) => a + p.amount, 0), sk = list.reduce((a, p) => a + krwOf(p), 0);
-    return `<div class="pay-day"><h4><span>${k}</span><span><b>${fmt(sum)}₫</b> ≈ ${fmt(sk)}원</span></h4><ul class="pay-items">${list.map(p => `
+    const sv = list.filter(p => !isKrw(p)).reduce((s, p) => s + p.amount, 0);
+    const sk = list.filter(isKrw).reduce((s, p) => s + p.amount, 0);
+    const tot = list.reduce((s, p) => s + krwOf(p), 0);
+    const head = [sv ? `<b>${fmt(sv)}₫</b>` : '', sk ? `<b>${fmt(sk)}원</b>` : ''].filter(Boolean).join(' + ');
+    return `<div class="pay-day"><h4><span>${k}</span><span>${head} ≈ ${fmt(tot)}원</span></h4><ul class="pay-items">${list.map(p => `
       <li class="pay-item">
         <div class="pi-cat" style="--c:${catColor(p.cat)}">${esc(p.cat.slice(0, 2))}</div>
         <div class="pi-main"><div class="pi-memo">${esc(p.memo || p.cat)}</div>
-          <div class="pi-meta"><span class="badge ${p.method}">${p.method === 'cash' ? '현금' : '카드'}</span>${new Date(p.ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
+          <div class="pi-meta"><span class="badge ${p.method}">${p.method === 'cash' ? '현금' : '카드'}</span>${isKrw(p) ? '<span class="badge krw">원화</span>' : ''}${new Date(p.ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</div>
           ${p.applied ? `<div class="pi-bills">낸 돈 ${billsText(p.pay)}${Object.keys(p.change).length ? ` · 거스름 ${billsText(p.change)}` : ''}</div>` : ''}</div>
-        <div class="pi-amt">${fmt(p.amount)}₫<small>≈${fmt(krwOf(p))}원</small></div>
+        <div class="pi-amt">${isKrw(p) ? `${fmt(p.amount)}원<small>≈${p.rate ? fmt(p.amount / p.rate) : '-'}₫</small>` : `${fmt(p.amount)}₫<small>≈${fmt(krwOf(p))}원</small>`}</div>
         <button class="pi-del" data-id="${p.id}" type="button" aria-label="삭제">×</button>
       </li>`).join('')}</ul></div>`;
   }).join('') : '<div class="empty">아직 결제 기록이 없습니다</div>';
@@ -410,11 +427,120 @@ $('#calcToPay').addEventListener('click', () => {
   const t = Math.round(liveTotal());
   if (t <= 0) return toast('계산된 금액이 없습니다');
   $('#payAmount').value = t.toLocaleString('ko-KR');
-  resetDraft(); showTab('pay'); renderCashPlan();
+  setPayCur('VND'); showTab('pay');
   $('#payMemo').focus();
 });
 $('#payTime').value = nowLocal();
 renderCatChips();
+
+// ---------- charge (ATM / exchange) ----------
+const charges = store.get('tw.charges', []);
+const cd = { type: 'atm', bills: {}, k50: 0, k10: 0 };
+const chgKrwUsed = c => c.type === 'fx' ? c.k50 * 50000 + c.k10 * 10000 : (c.krw || 0) + (c.fee || 0);
+function chgDraftKrw() {
+  return cd.type === 'fx' ? cd.k50 * 50000 + cd.k10 * 10000 : parseAmt($('#chgKrw').value) + parseAmt($('#chgFee').value);
+}
+function renderChgForm() {
+  const amount = sumBills(cd.bills), typed = parseAmt($('#chgAmount').value), r = krwPerVnd();
+  $('#chgAmountKrw').textContent = `시장 환율 기준 ≈ ${fmt(toKrw(typed))}원`;
+  $('#chgAtm').hidden = cd.type !== 'atm'; $('#chgFx').hidden = cd.type !== 'fx';
+  $('#k50').textContent = cd.k50; $('#k10').textContent = cd.k10;
+  $('#k50Sum').textContent = fmt(cd.k50 * 50000) + '원'; $('#k10Sum').textContent = fmt(cd.k10 * 10000) + '원';
+  const krw = chgDraftKrw();
+  if (krw && amount) {
+    const eff = krw / amount * 100, diff = r ? (eff / (r * 100) - 1) * 100 : 0;
+    $('#chgRate').innerHTML = `적용 환율 100₫ = ${(eff + 1e-9).toFixed(2)}원 <span class="muted">(사용 ${fmt(krw)}원${r ? ` · 시장 대비 ${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%` : ''})</span>`;
+  } else $('#chgRate').innerHTML = krw ? `<span class="muted">사용 ${fmt(krw)}원</span>` : '';
+  const rem = typed - amount;
+  $('#chgBillSum').innerHTML = `<span class="lbl">받은 지폐</span>${billsText(cd.bills) || '-'} <b>(${fmt(amount)}₫)</b>` +
+    (typed && rem ? ` <span class="${Math.abs(rem) >= 1000 ? 'bad' : 'muted small'}">${rem > 0 ? fmt(rem) + '₫ 덜 입력' : fmt(-rem) + '₫ 초과'}</span>` : '');
+  $('#chgBills').innerHTML = `<tr><th>지폐</th><th>받은 장수</th><th>보유</th></tr>` + DENOMS.map(d => `<tr data-v="${d.v}"><td>${fmt(d.v)}</td>
+    <td><span class="mini-step"><button type="button" data-d="-1">−</button><span>${cd.bills[d.v] || 0}</span><button type="button" data-d="1">+</button></span></td>
+    <td class="have">${wallet[d.v] || 0}장</td></tr>`).join('');
+}
+$('#chgType').addEventListener('click', e => {
+  const b = e.target.closest('[data-t]'); if (!b) return;
+  cd.type = b.dataset.t; $$('#chgType .seg-btn').forEach(x => x.classList.toggle('active', x === b)); renderChgForm();
+});
+$('#chgAmount').addEventListener('input', e => {
+  const n = parseAmt(e.target.value); e.target.value = n ? n.toLocaleString('ko-KR') : '';
+  cd.bills = greedyChange(n); renderChgForm();
+});
+['#chgKrw', '#chgFee'].forEach(id => $(id).addEventListener('input', e => {
+  const n = parseAmt(e.target.value); e.target.value = n ? n.toLocaleString('ko-KR') : ''; renderChgForm();
+}));
+$('#chgFx').addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]'); if (!b) return;
+  const k = b.closest('.mini-step').dataset.k; cd[k] = Math.max(0, cd[k] + +b.dataset.d); renderChgForm();
+});
+$('#chgBills').addEventListener('click', e => {
+  const b = e.target.closest('button[data-d]'); if (!b) return;
+  const v = +b.closest('tr').dataset.v, n = Math.max(0, (cd.bills[v] || 0) + +b.dataset.d);
+  if (n) cd.bills[v] = n; else delete cd.bills[v];
+  const t = sumBills(cd.bills); $('#chgAmount').value = t ? t.toLocaleString('ko-KR') : '';
+  renderChgForm();
+});
+$('#chgForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const amount = sumBills(cd.bills);
+  if (!amount) return toast('받은 금액 또는 지폐 장수를 입력하세요');
+  const typed = parseAmt($('#chgAmount').value);
+  if (typed && Math.abs(typed - amount) >= 1000) return toast('금액과 지폐 합계가 다릅니다');
+  const rec = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    ts: new Date($('#chgTime').value || Date.now()).getTime() || Date.now(),
+    type: cd.type, amount, bills: { ...cd.bills }, memo: $('#chgMemo').value.trim(),
+    krw: cd.type === 'atm' ? parseAmt($('#chgKrw').value) : 0, fee: cd.type === 'atm' ? parseAmt($('#chgFee').value) : 0,
+    k50: cd.type === 'fx' ? cd.k50 : 0, k10: cd.type === 'fx' ? cd.k10 : 0, market: krwPerVnd(),
+  };
+  for (const [v, n] of Object.entries(rec.bills)) wallet[v] = (wallet[v] || 0) + n;
+  saveWallet(); renderWallet();
+  charges.push(rec); store.set('tw.charges', charges);
+  cd.bills = {}; cd.k50 = 0; cd.k10 = 0;
+  ['#chgAmount', '#chgKrw', '#chgFee', '#chgMemo'].forEach(id => ($(id).value = ''));
+  $('#chgTime').value = nowLocal();
+  renderChgForm(); renderCharge(); renderCashPlan();
+  toast(`지갑에 ${fmt(amount)}₫ 추가했습니다`);
+});
+$('#chgList').addEventListener('click', e => {
+  const b = e.target.closest('.pi-del'); if (!b) return;
+  const i = charges.findIndex(c => c.id === b.dataset.id); if (i < 0) return;
+  const c = charges[i];
+  const lack = Object.entries(c.bills).some(([v, n]) => (wallet[v] || 0) < n);
+  if (!confirm(`${fmt(c.amount)}₫ 충전 기록을 삭제할까요?\n지갑에서 해당 지폐를 다시 뺍니다.${lack ? '\n(이미 사용한 지폐는 0장까지만 뺍니다)' : ''}`)) return;
+  for (const [v, n] of Object.entries(c.bills)) wallet[v] = Math.max(0, (wallet[v] || 0) - n);
+  Object.keys(wallet).forEach(k => { if (!wallet[k]) delete wallet[k]; });
+  saveWallet(); renderWallet();
+  charges.splice(i, 1); store.set('tw.charges', charges); renderCharge(); renderChgForm(); renderCashPlan();
+  toast('삭제했습니다');
+});
+function renderCharge() {
+  if (!$('#chgList')) return;
+  const sum = charges.reduce((s, c) => s + c.amount, 0);
+  const withKrw = charges.filter(c => chgKrwUsed(c) > 0);
+  const kSum = withKrw.reduce((s, c) => s + chgKrwUsed(c), 0), vSum = withKrw.reduce((s, c) => s + c.amount, 0);
+  $('#chgSum').textContent = fmt(sum);
+  $('#chgCount').textContent = charges.length ? `· ${charges.length}건` : '';
+  $('#chgSumKrw').textContent = `사용한 원화 ${fmt(kSum)}원${vSum ? ` · 평균 100₫ = ${(kSum / vSum * 100 + 1e-9).toFixed(2)}원` : ''}`;
+  const groups = {};
+  [...charges].sort((a, b) => b.ts - a.ts).forEach(c => {
+    const d = new Date(c.ts), key = `${d.getMonth() + 1}/${d.getDate()} (${WD[d.getDay()]})`;
+    (groups[key] = groups[key] || []).push(c);
+  });
+  $('#chgList').innerHTML = charges.length ? Object.entries(groups).map(([k, list]) => `
+    <div class="pay-day"><h4><span>${k}</span><span><b>+${fmt(list.reduce((s, c) => s + c.amount, 0))}₫</b></span></h4><ul class="pay-items">${list.map(c => {
+      const kr = chgKrwUsed(c);
+      return `<li class="pay-item">
+        <div class="pi-cat" style="--c:${c.type === 'atm' ? '#0e8a7e' : '#f59e0b'}">${c.type === 'atm' ? 'ATM' : '환전'}</div>
+        <div class="pi-main"><div class="pi-memo">${esc(c.memo || (c.type === 'atm' ? 'ATM 출금' : '환전'))}</div>
+          <div class="pi-meta">${new Date(c.ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}${c.type === 'fx' && (c.k50 || c.k10) ? ` · ${[c.k50 ? `5만원×${c.k50}` : '', c.k10 ? `1만원×${c.k10}` : ''].filter(Boolean).join(' + ')}` : ''}</div>
+          <div class="pi-bills">${billsText(c.bills)}</div></div>
+        <div class="pi-amt plus">+${fmt(c.amount)}₫<small>${kr ? `${fmt(kr)}원 · 100₫=${(kr / c.amount * 100 + 1e-9).toFixed(2)}원` : '원화 미입력'}</small></div>
+        <button class="pi-del" data-id="${c.id}" type="button" aria-label="삭제">×</button>
+      </li>`;
+    }).join('')}</ul></div>`).join('') : '<div class="empty">아직 충전 기록이 없습니다</div>';
+}
+$('#chgTime').value = nowLocal();
 
 // ---------- schedule (Google Sheet) ----------
 function parseCSV(text) {
@@ -516,7 +642,7 @@ function parseSheet(rows) {
   return { title, days, notes, dayCount: Object.keys(counts).length };
 }
 
-const plan = { data: store.get('tw.plan', null), at: store.get('tw.planAt', 0), mode: store.get('tw.planMode', 'all'), sel: store.get('tw.planSel', 0), loading: false, err: '' };
+const plan = { data: store.get('tw.plan', null), at: store.get('tw.planAt', 0), mode: ['all', 'day'].includes(store.get('tw.planMode', 'all')) ? store.get('tw.planMode', 'all') : 'all', sel: store.get('tw.planSel', 0), loading: false, err: '' };
 let planTimer;
 
 async function fetchSheet() {
@@ -585,7 +711,7 @@ function notesHtml(data) {
 
 function renderPlan() {
   renderPlanStatus();
-  $$('.seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === plan.mode));
+  $$('#view-plan .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === plan.mode));
   const body = $('#planBody'), chips = $('#dayChips');
   const data = plan.data;
   if (!data) {
@@ -630,7 +756,7 @@ function renderPlan() {
   }
 }
 function setMode(m) { plan.mode = m; store.set('tw.planMode', m); store.set('tw.planSel', plan.sel); renderPlan(); window.scrollTo(0, 0); }
-$$('.seg-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$$('#view-plan .seg-btn').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
 $('#dayChips').addEventListener('click', e => {
   const c = e.target.closest('.chip'); if (!c) return;
   plan.sel = +c.dataset.i; store.set('tw.planSel', plan.sel); renderPlan();
@@ -683,6 +809,8 @@ renderWallet();
 renderSaved();
 renderPay();
 renderCashPlan();
+renderCharge();
+renderChgForm();
 renderCalc();
 renderRate();
 loadRate();
