@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>푸꾸옥 여행지갑</title>
+<meta name="theme-color" content="#0e8a7e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="여행지갑">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">여행지갑 <span class="brand-sub">VND</span></div>
+  <button class="rate-badge" id="rateBadge" type="button" aria-label="환율 설정">
+    <span id="rateText">환율 불러오는 중…</span>
+  </button>
+</header>
+
+<main>
+  <!-- ========== 지갑 ========== -->
+  <section class="view" id="view-wallet" data-view="wallet">
+    <div class="total-card sticky" id="walletTop">
+      <div class="total-label">지갑 총액</div>
+      <div class="total-vnd"><span class="js-wallet-vnd">0</span><small>₫</small></div>
+      <div class="total-krw">≈ <span class="js-wallet-krw">0</span>원 · <span class="js-wallet-count">0</span>장</div>
+    </div>
+
+    <ul class="notes" id="noteList"></ul>
+
+    <div class="total-card bottom">
+      <div class="total-label">지갑 총액</div>
+      <div class="total-vnd"><span class="js-wallet-vnd">0</span><small>₫</small></div>
+      <div class="total-krw">≈ <span class="js-wallet-krw">0</span>원 · <span class="js-wallet-count">0</span>장</div>
+    </div>
+    <button class="btn ghost wide" id="walletReset" type="button">전체 초기화</button>
+  </section>
+
+  <!-- ========== 계산 ========== -->
+  <section class="view" id="view-calc" data-view="calc" hidden>
+    <div class="calc-screen">
+      <ol class="tape" id="tape"></ol>
+      <div class="calc-current" id="calcCurrent">0</div>
+      <div class="calc-total">
+        <div><span class="total-label">총액</span> <b id="calcVnd">0</b>₫</div>
+        <div class="calc-krw">≈ <b id="calcKrw">0</b>원</div>
+      </div>
+    </div>
+    <div class="keypad" id="keypad">
+      <button data-k="C" class="k fn">C</button>
+      <button data-k="back" class="k fn" aria-label="지우기">⌫</button>
+      <button data-k="%" class="k op disc">할인%</button>
+      <button data-k="-" class="k op">−</button>
+      <button data-k="7" class="k">7</button>
+      <button data-k="8" class="k">8</button>
+      <button data-k="9" class="k">9</button>
+      <button data-k="+" class="k op">+</button>
+      <button data-k="4" class="k">4</button>
+      <button data-k="5" class="k">5</button>
+      <button data-k="6" class="k">6</button>
+      <button data-k="=" class="k eq tall">=</button>
+      <button data-k="1" class="k">1</button>
+      <button data-k="2" class="k">2</button>
+      <button data-k="3" class="k">3</button>
+      <button data-k="0" class="k">0</button>
+      <button data-k="000" class="k">000</button>
+      <button data-k="." class="k">.</button>
+    </div>
+    <p class="hint">예) 350000 + 120000 할인% 10 = → 할인은 그때까지의 합계에 적용</p>
+  </section>
+
+  <!-- ========== 일정 ========== -->
+  <section class="view" id="view-plan" data-view="plan" hidden>
+    <div class="plan-head">
+      <div class="seg" role="tablist">
+        <button class="seg-btn active" data-mode="all" type="button">전체 일정</button>
+        <button class="seg-btn" data-mode="day" type="button">일별 일정</button>
+      </div>
+      <div class="plan-actions">
+        <button class="icon-btn" id="planRefresh" type="button" title="새로고침">⟳</button>
+        <button class="icon-btn" id="planSave" type="button" title="이미지 저장">⤓</button>
+      </div>
+    </div>
+    <div class="plan-status" id="planStatus"></div>
+    <div class="day-chips" id="dayChips" hidden></div>
+    <div id="planBody"><div class="empty">일정을 불러오는 중…</div></div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-tab="wallet" type="button"><span class="ti">👛</span>지갑</button>
+  <button class="tab" data-tab="calc" type="button"><span class="ti">🧮</span>계산</button>
+  <button class="tab" data-tab="plan" type="button"><span class="ti">🗓️</span>일정</button>
+</nav>
+
+<dialog id="rateDialog">
+  <form method="dialog" class="dlg">
+    <h3>환율 설정</h3>
+    <p class="muted" id="rateInfo"></p>
+    <label class="field">1,000동 = <input type="number" id="rateManual" step="0.01" inputmode="decimal" placeholder="자동"> 원</label>
+    <p class="muted small">비워두면 실시간 환율을 사용합니다.</p>
+    <div class="dlg-actions">
+      <button class="btn ghost" value="refresh" type="submit">환율 새로고침</button>
+      <button class="btn" value="save" type="submit">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" hidden></div>
+<script src="app.js"></script>
+</body>
+</html>
