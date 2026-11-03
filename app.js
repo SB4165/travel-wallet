@@ -41,19 +41,21 @@ function toast(msg) {
 }
 
 // ---------- exchange rate ----------
-const rate = { auto: null, at: 0, src: '', manual: store.get('tw.rateManual', null) };
+// manual rate is stored as KRW per 100 VND (legacy key tw.rateManual was per 1,000 VND)
+const legacyManual = store.get('tw.rateManual', null);
+const rate = { auto: null, at: 0, src: '', manual: store.get('tw.rateManual100', legacyManual ? legacyManual / 10 : null) };
 Object.assign(rate, store.get('tw.rateAuto', {}));
-const krwPerVnd = () => (rate.manual ? rate.manual / 1000 : rate.auto) || 0;
+const krwPerVnd = () => (rate.manual ? rate.manual / 100 : rate.auto) || 0;
 const toKrw = vnd => vnd * krwPerVnd();
 
 function renderRate() {
   const b = $('#rateBadge'), t = $('#rateText');
   const r = krwPerVnd();
   b.classList.toggle('manual', !!rate.manual);
-  t.textContent = r ? `1,000₫ = ${(r * 1000).toFixed(2)}원${rate.manual ? ' (수동)' : ''}` : '환율 없음 · 탭하여 입력';
+  t.textContent = r ? `100₫ = ${(r * 100 + 1e-9).toFixed(2)}원${rate.manual ? ' (수동)' : ''}` : '환율 없음 · 탭하여 입력';
   const when = rate.at ? new Date(rate.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
   $('#rateInfo').textContent = rate.auto
-    ? `실시간: 1,000₫ = ${(rate.auto * 1000).toFixed(2)}원 (${rate.src}, ${when} 기준)`
+    ? `실시간: 100₫ = ${(rate.auto * 100 + 1e-9).toFixed(2)}원 (${rate.src}, ${when} 기준)`
     : '실시간 환율을 아직 불러오지 못했습니다.';
   refreshMoney();
 }
@@ -87,7 +89,7 @@ $('#rateDialog').addEventListener('close', () => {
   if (act === 'save') {
     const v = parseFloat($('#rateManual').value);
     rate.manual = v > 0 ? v : null;
-    store.set('tw.rateManual', rate.manual);
+    store.set('tw.rateManual100', rate.manual);
     renderRate();
   } else if (act === 'refresh') loadRate(true);
 });
