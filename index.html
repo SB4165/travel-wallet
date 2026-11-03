@@ -51,12 +51,16 @@
       <div class="total-vnd"><span id="paySum">0</span><small>₫</small></div>
       <div class="total-krw">≈ <span id="paySumKrw">0</span>원</div>
       <div class="pay-split">현금 <b id="payCash">0</b>₫ · 카드 <b id="payCard">0</b>₫</div>
+      <div class="pay-split" id="payKrwLine" hidden>원화 결제 <b id="payKrw">0</b>원 · 전체 합계 ≈ <b id="payAllKrw">0</b>원</div>
     </div>
 
     <form class="card pay-form" id="payForm" autocomplete="off">
       <div class="amount-row">
-        <input id="payAmount" inputmode="numeric" placeholder="결제 금액" aria-label="결제 금액(동)">
-        <span class="unit">₫</span>
+        <input id="payAmount" inputmode="numeric" placeholder="결제 금액" aria-label="결제 금액">
+        <div class="cur-seg" id="payCur">
+          <button type="button" data-c="VND" class="active">₫ 동</button>
+          <button type="button" data-c="KRW">₩ 원</button>
+        </div>
       </div>
       <div class="amount-krw" id="payAmountKrw">≈ 0원</div>
       <input id="payMemo" class="input" placeholder="내용 (예: 미스타 씨푸드)" maxlength="60">
@@ -76,6 +80,47 @@
     </form>
 
     <div id="payList"></div>
+  </section>
+
+  <!-- ========== 충전 ========== -->
+  <section class="view" id="view-charge" data-view="charge" hidden>
+    <div class="total-card">
+      <div class="total-label">총 충전 <span id="chgCount"></span></div>
+      <div class="total-vnd"><span id="chgSum">0</span><small>₫</small></div>
+      <div class="total-krw" id="chgSumKrw">사용한 원화 0원</div>
+    </div>
+
+    <form class="card pay-form" id="chgForm" autocomplete="off">
+      <div class="seg wide-seg" id="chgType">
+        <button type="button" data-t="atm" class="seg-btn active">ATM 출금</button>
+        <button type="button" data-t="fx" class="seg-btn">환전</button>
+      </div>
+      <div class="amount-row">
+        <input id="chgAmount" inputmode="numeric" placeholder="받은 금액" aria-label="받은 금액(동)">
+        <span class="unit">₫</span>
+      </div>
+      <div class="amount-krw" id="chgAmountKrw">≈ 0원</div>
+
+      <div id="chgAtm" class="kv">
+        <label><span>원화 청구액</span><input id="chgKrw" class="input" inputmode="numeric" placeholder="선택"><em>원</em></label>
+        <label><span>수수료</span><input id="chgFee" class="input" inputmode="numeric" placeholder="선택"><em>원</em></label>
+      </div>
+      <div id="chgFx" class="kv" hidden>
+        <div class="kv-row"><span>5만원권</span><span class="mini-step" data-k="k50"><button type="button" data-d="-1">−</button><span id="k50">0</span><button type="button" data-d="1">+</button></span><em id="k50Sum">0원</em></div>
+        <div class="kv-row"><span>1만원권</span><span class="mini-step" data-k="k10"><button type="button" data-d="-1">−</button><span id="k10">0</span><button type="button" data-d="1">+</button></span><em id="k10Sum">0원</em></div>
+      </div>
+      <div class="rate-line" id="chgRate"></div>
+
+      <div class="cash-box">
+        <div class="plan-sum" id="chgBillSum"></div>
+        <table class="bill-edit" id="chgBills"></table>
+      </div>
+      <input id="chgMemo" class="input" placeholder="메모 (예: BIDV ATM, 금은방)" maxlength="60">
+      <input type="datetime-local" id="chgTime" class="input" aria-label="충전 시각">
+      <button class="btn wide" type="submit">충전 기록 · 지갑에 추가</button>
+    </form>
+
+    <div id="chgList"></div>
   </section>
 
   <!-- ========== 계산 ========== -->
@@ -133,6 +178,7 @@
 <nav class="tabbar">
   <button class="tab active" data-tab="wallet" type="button"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5A2.5 2.5 0 0 1 6.5 5H18v3"/><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M20.5 11.5H16a2 2 0 0 0 0 4h4.5"/><circle cx="16.2" cy="13.5" r=".6" class="fill"/></svg>지갑</button>
   <button class="tab" data-tab="pay" type="button"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-2-1.3-2 1.3-2-1.3-2 1.3-2-1.3-2 1.3z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/></svg>결제</button>
+  <button class="tab" data-tab="charge" type="button"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13l-3-3M20 16H7l3 3"/><circle cx="12" cy="12" r="1.2" class="fill"/></svg>충전</button>
   <button class="tab" data-tab="calc" type="button"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8 7h8v3H8z"/><path d="M8.5 13.5h.01M12 13.5h.01M15.5 13.5h.01M8.5 17h.01M12 17h.01M15.5 17h.01" stroke-width="2.4"/></svg>계산</button>
   <button class="tab" data-tab="plan" type="button"><svg class="ti" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/><path d="M7.5 13h2M11 13h2M14.5 13h2M7.5 16.5h2M11 16.5h2"/></svg>일정</button>
 </nav>
