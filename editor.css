@@ -1,0 +1,28 @@
+/* schedule editor */
+.plan-actions{flex-wrap:nowrap;gap:4px}
+.plan-actions .icon-btn{width:36px;height:36px;font-size:16px}
+#view-plan .seg-btn{padding:8px 10px;white-space:nowrap}
+body.ed-open{overflow:hidden}
+.ed-wrap{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center}
+.ed-panel{background:var(--card);width:100%;max-width:720px;height:calc(100% - 24px);border-radius:18px 18px 0 0;display:flex;flex-direction:column;overflow:hidden}
+.ed-panel.small{height:auto;max-height:calc(100% - 24px)}
+.ed-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.ed-head h3{margin:0;font-size:16px}
+.ed-x{border:0;background:none;font-size:18px;width:32px;height:32px;padding:0;color:var(--muted)}
+.ed-body{flex:1;overflow:auto;padding:12px 14px 16px;-webkit-overflow-scrolling:touch}
+.ed-foot{display:flex;align-items:center;gap:8px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--card)}
+.ed-foot .btn{padding:11px 16px}
+.ed-status{flex:1;font-size:12px;color:var(--muted)}
+.ed-status.bad{color:var(--accent);font-weight:700}
+.ed-days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.ed-days::-webkit-scrollbar{display:none}
+.ed-label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}
+.ed-hint{font-size:12px;color:var(--muted);font-weight:500;margin:6px 0 0}
+.ed-label .ed-hint{margin:0 0 0 4px}
+.ed-tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.ed-chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 11px;font-size:12px;font-weight:700;color:var(--primary)}
+.ed-text{min-height:46vh;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;line-height:1.5;resize:vertical;white-space:pre-wrap;word-break:break-word}
+.ed-preview{background:var(--bg);border-radius:12px;border:1px solid var(--line)}
+.ed-steps{margin:8px 0 12px;padding-left:20px;font-size:13px;line-height:1.7}
+.ed-steps code{background:var(--bg);padding:1px 4px;border-radius:4px}
+.btn:disabled{opacity:.5}
