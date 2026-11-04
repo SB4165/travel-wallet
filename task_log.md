@@ -34,3 +34,8 @@
 - **Instruction**: 일정표를 웹/모바일에서 수정 가능하게(앱 안 편집 방식 선택). 추가: 날짜 옆 요약이 예전 내용 → 하루 일정에서 자동 요약.
 - **Changes**: 신규 `editor.js`(✎ 편집/⚙ 설정 버튼 주입, 날짜별 테마·요약·상세 원문 편집 + 삽입 도우미 + 실시간 미리보기, Apps Script 웹앱 POST(text/plain, 토큰), 설정·연결 테스트·코드 복사), `editor.css`, `gas/Code.gs`(토큰 검증, LockService, 기존값 비교→불일치 시 내용으로 셀 탐색, 0/2건 이상이면 충돌 거부), 신규 `summary.js`(dayHead 재정의: 테마 + 이벤트 제목에서 이동/휴식 등 제외한 장소 최대 5개 자동 요약, 없으면 시트 요약 사용). `index.html`(링크/스크립트), `sw.js` tw-v6, README. app.js 변경 없음.
 - **Result & Status**: Code.gs 모의 시트 테스트(토큰 오류, ping, 정확 위치, 오프셋 탐색, 충돌, 빈 셀) 통과. Playwright: 설정/연결 테스트, 11/8 선택1 편집 → POST row/col/oldValue 정확, 미리보기·닫힘, 360px 헤더 한 줄. 요약 예: 11/6 → 수영, 냐항센, 루이스파, 빈산, LOCA - Night Market. 실제 Apps Script 배포·저장은 사용자 설정 후 확인 필요.
+
+## [2026-11-05 01:15] v6.1: 편집 설정 간소화(비밀번호 자동 삽입)
+- **Instruction**: Apps Script 설정을 대신 해달라는 요청(비밀번호 지정). 브라우저(앱 내/Chrome 확장) 미연결 + 비밀번호 대리 입력 불가 → 사용자 선택: 설정 간소화.
+- **Changes**: `editor.js` 설정 단계 4단계로 재구성, 비밀번호 입력 후 '코드 복사' 시 Code.gs의 TOKEN 자리에 자동 삽입(따옴표·역슬래시 차단, 미입력 시 안내), `editor.css` 버튼 간격, `sw.js` tw-v7. 비밀번호 값은 repo·로그에 저장하지 않음.
+- **Result & Status**: Playwright — 미입력 경고, 테스트 비밀번호 삽입 확인, 복사된 코드로 모의 GAS ping 성공, 기존 편집 테스트 회귀 통과. 실제 배포는 사용자 진행 필요.
