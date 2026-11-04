@@ -1,5 +1,5 @@
 // App-shell cache; network-first so updates land immediately when online.
-const CACHE = 'tw-v6';
+const CACHE = 'tw-v7';
 const SHELL = ['./', 'index.html', 'style.css', 'app.js', 'phrases.js', 'phrases.css', 'editor.js', 'editor.css', 'summary.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

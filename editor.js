@@ -49,17 +49,16 @@
       <div class="ed-body">
         <p class="ed-hint">앱에서 일정을 고치려면 구글 시트에 저장용 스크립트를 한 번 설치해야 합니다.</p>
         <ol class="ed-steps">
-          <li>구글 시트 → <b>확장 프로그램 → Apps Script</b></li>
-          <li>아래 <b>코드 복사</b> → 기존 내용 지우고 붙여넣기</li>
-          <li>코드 첫 줄 <code>TOKEN</code>을 나만 아는 비밀번호로 바꾸고 저장</li>
-          <li><b>배포 → 새 배포 → 웹 앱</b>, 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 배포 → 권한 승인</li>
-          <li>나온 <b>웹 앱 URL</b>과 비밀번호를 아래에 입력 → 연결 테스트</li>
+          <li>아래에 <b>비밀번호</b> 입력 → <b>코드 복사</b> (비밀번호가 코드에 자동으로 들어감)</li>
+          <li>구글 시트 → <b>확장 프로그램 → Apps Script</b> → 기존 내용 지우고 붙여넣기 → 저장(💾)</li>
+          <li><b>배포 → 새 배포 → 유형: 웹 앱</b>, 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 배포 → 권한 승인</li>
+          <li>나온 <b>웹 앱 URL</b>을 아래에 붙여넣기 → <b>연결 테스트</b></li>
         </ol>
-        <button type="button" class="btn ghost wide" id="cfgCopy">Apps Script 코드 복사</button>
-        <label class="ed-label">웹 앱 URL</label>
-        <input class="input" id="cfgUrl" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec">
         <label class="ed-label">비밀번호(TOKEN)</label>
         <input class="input" id="cfgToken" type="password" autocomplete="off">
+        <button type="button" class="btn ghost wide ed-copy" id="cfgCopy">Apps Script 코드 복사</button>
+        <label class="ed-label">웹 앱 URL</label>
+        <input class="input" id="cfgUrl" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec">
         <p class="ed-status" id="cfgStatus"></p>
       </div>
       <footer class="ed-foot">
@@ -237,9 +236,15 @@ function out(o) {
     q('#cfgWrap').hidden = false; document.body.classList.add('ed-open');
   }
   async function copyCode() {
-    try { await navigator.clipboard.writeText(GAS_CODE); toast('코드를 복사했습니다'); }
+    const token = q('#cfgToken').value.trim();
+    if (!token) { status(q('#cfgStatus'), '먼저 비밀번호를 입력하세요 (코드에 자동으로 들어갑니다)', true); return q('#cfgToken').focus(); }
+    if (/['\\\n]/.test(token)) return status(q('#cfgStatus'), '비밀번호에 따옴표·역슬래시는 쓸 수 없습니다', true);
+    const code = GAS_CODE.replace("'여기에-비밀번호'", `'${token}'`);
+    ls.set('tw.gasToken', token);
+    status(q('#cfgStatus'), '코드 복사됨 → Apps Script에 붙여넣으세요');
+    try { await navigator.clipboard.writeText(code); toast('코드를 복사했습니다'); }
     catch {
-      const ta = document.createElement('textarea'); ta.value = GAS_CODE; document.body.appendChild(ta);
+      const ta = document.createElement('textarea'); ta.value = code; document.body.appendChild(ta);
       ta.select(); try { document.execCommand('copy'); toast('코드를 복사했습니다'); } catch { toast('복사 실패 — repo의 gas/Code.gs를 사용하세요'); }
       ta.remove();
     }

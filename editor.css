@@ -26,3 +26,4 @@ body.ed-open{overflow:hidden}
 .ed-steps{margin:8px 0 12px;padding-left:20px;font-size:13px;line-height:1.7}
 .ed-steps code{background:var(--bg);padding:1px 4px;border-radius:4px}
 .btn:disabled{opacity:.5}
+.ed-copy{margin-top:8px}
