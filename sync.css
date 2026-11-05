@@ -1,0 +1,11 @@
+.sync-bar{display:flex;align-items:center;gap:8px;margin:4px 2px 12px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:12px;color:var(--muted)}
+.sy-dot{flex:0 0 8px;height:8px;border-radius:50%;background:#b8c2c0}
+.sync-bar[data-s="ok"] .sy-dot{background:#2fa36b}
+.sync-bar[data-s="busy"] .sy-dot{background:var(--warn);animation:sy-pulse 1s infinite alternate}
+.sync-bar[data-s="err"] .sy-dot{background:var(--accent)}
+.sync-bar[data-s="err"] .sy-text{color:var(--accent)}
+.sy-text{flex:1;min-width:0;overflow-wrap:anywhere;line-height:1.35}
+.sy-btn{flex:0 0 auto;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:6px 10px;font-weight:700;font-size:12px;color:var(--ink)}
+.sy-cmp{font-size:13px;line-height:1.6;margin:6px 0 12px}
+.ed-panel .btn.wide+.ed-hint{margin:4px 0 12px}
+@keyframes sy-pulse{to{opacity:.35}}
