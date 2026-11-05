@@ -39,3 +39,13 @@
 - **Instruction**: Apps Script 설정을 대신 해달라는 요청(비밀번호 지정). 브라우저(앱 내/Chrome 확장) 미연결 + 비밀번호 대리 입력 불가 → 사용자 선택: 설정 간소화.
 - **Changes**: `editor.js` 설정 단계 4단계로 재구성, 비밀번호 입력 후 '코드 복사' 시 Code.gs의 TOKEN 자리에 자동 삽입(따옴표·역슬래시 차단, 미입력 시 안내), `editor.css` 버튼 간격, `sw.js` tw-v7. 비밀번호 값은 repo·로그에 저장하지 않음.
 - **Result & Status**: Playwright — 미입력 경고, 테스트 비밀번호 삽입 확인, 복사된 코드로 모의 GAS ping 성공, 기존 편집 테스트 회귀 통과. 실제 배포는 사용자 진행 필요.
+
+## [2026-11-05 01:40] Apps Script 웹앱 설치·배포 (브라우저 대행)
+- **Instruction**: 편집용 Apps Script 설정 대행 요청.
+- **Changes**: 사용자 Google 계정에 독립 프로젝트 '여행지갑 일정 편집' 생성(시트 메뉴의 새 창이 차단되어 script.google.com에서 생성, `SpreadsheetApp.openById(SHEET_ID)` 사용). 비밀번호는 대리 입력 불가 → TOKEN 자리표시자 유지 + 최초 연결 비밀번호를 ScriptProperties에 고정(TOFU) 방식. 웹 앱 배포(실행: 나, 액세스: 모든 사용자), 권한 승인은 사용자가 직접 클릭. repo의 gas/Code.gs는 아직 기존(TOKEN 상수) 버전.
+- **Result & Status**: 배포 응답 확인(토큰 없는 요청 → 비밀번호 오류 응답), 사용자 앱에서 연결 테스트 성공. 실제 셀 저장은 사용자 첫 편집으로 확인 예정.
+
+## [2026-11-05 02:20] v7: 공유 지갑 실시간 동기화 (지갑·결제·충전)
+- **Instruction**: 지갑을 다른 사람과 실시간 연동. 사용자 선택: Apps Script 방식(약 5초), 범위 지갑+결제+충전 전부.
+- **Changes**: `gas/Code.gs` 전면 갱신(배포본과 통일: `openById(SHEET_ID)`, TOKEN 상수 또는 TOFU `tw_token` 폴백, `action:'sync'` — ops `wd`(지폐 증감, 0 하한)/`pa`·`pd`/`ca`·`cd`, batch id 중복 제거(최근 200), 버전 `w_ver`, 저장소 ScriptProperties(`w_bills`, `w_p:<id>`, `w_c:<id>`) → 공개 시트 미기록). 신규 `sync.js`(store.set 훅 → 기준 상태 대비 diff 전송, 미확인 batch 재전송, 전송 중 로컬 변경 병합, 5초 폴링/가시성·online 즉시, 지수 백오프, 최초 연결 시 공유로 맞추기/내 것 더하기 선택, 포커스 입력 보존), `sync.css`(지갑 탭 상태 바). `editor.js` 내장 GAS 코드 제거 → `gas/Code.gs` 프리페치 후 복사, 설정 안내(업데이트=새 버전, 동행자는 URL·비밀번호만), ping에 지갑 기능 확인. `index.html`, `sw.js` tw-v8(+sync/gas 캐시), README. app.js 변경 없음.
+- **Result & Status**: GAS 단위 테스트(토큰, 빈 상태, ops 적용, batch 중복, 음수 하한, 잘못된 키/id 무시, TOFU) 통과. Playwright 2~4기기(모의 GAS): 업로드/참여, 5초 폴링 반영, 현금 결제 차감·삭제 원복 양쪽 일치, 동시 +1 → 2, 충전 반영, 오프라인 변경 1회만 적용, 새로고침 유지, 선택 대화상자, 비밀번호 오류, 360px 넘침 없음, JS 에러 0, 코드 복사 회귀 통과. **Pending**: 사용자가 Apps Script에 새 코드 붙여넣기 + 새 버전 배포 필요.
