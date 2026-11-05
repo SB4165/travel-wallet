@@ -173,7 +173,7 @@
     if (q('#edTheme').value !== orig.theme) jobs.push({ row: L.themeRow, oldValue: orig.theme, value: q('#edTheme').value });
     if (L.sumRow >= 0 && q('#edSum').value !== orig.sum) jobs.push({ row: L.sumRow, oldValue: orig.sum, value: q('#edSum').value });
     if (L.detailRow >= 0 && q('#edText').value !== orig.detail) jobs.push({ row: L.detailRow, oldValue: orig.detail, value: q('#edText').value });
-    if (!jobs.length) return toast('바뀜 내용이 없습니다');
+    if (!jobs.length) return toast('바뀐 내용이 없습니다');
     const btn = q('#edSave'); btn.disabled = true;
     status(q('#edStatus'), '저장 중…');
     try {
