@@ -45,15 +45,16 @@
   </div>
   <div class="ed-wrap" id="cfgWrap" hidden>
     <div class="ed-panel small" role="dialog" aria-modal="true" aria-labelledby="cfgTitle">
-      <header class="ed-head"><button type="button" class="ed-x" data-close aria-label="닫기">✕</button><h3 id="cfgTitle">일정 편집 설정</h3></header>
+      <header class="ed-head"><button type="button" class="ed-x" data-close aria-label="닫기">✕</button><h3 id="cfgTitle">연결 설정 (일정 편집 · 공유 지갑)</h3></header>
       <div class="ed-body">
         <p class="ed-hint">앱에서 일정을 고치려면 구글 시트에 저장용 스크립트를 한 번 설치해야 합니다.</p>
         <ol class="ed-steps">
           <li>아래에 <b>비밀번호</b> 입력 → <b>코드 복사</b> (비밀번호가 코드에 자동으로 들어감)</li>
-          <li>구글 시트 → <b>확장 프로그램 → Apps Script</b> → 기존 내용 지우고 붙여넣기 → 저장(💾)</li>
-          <li><b>배포 → 새 배포 → 유형: 웹 앱</b>, 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 배포 → 권한 승인</li>
-          <li>나온 <b>웹 앱 URL</b>을 아래에 붙여넣기 → <b>연결 테스트</b></li>
+          <li><b>script.google.com</b> → 프로젝트 <b>여행지갑 일정 편집</b>(없으면 새 프로젝트) → 기존 내용 지우고 붙여넣기 → 저장(💾)</li>
+          <li>처음: <b>배포 → 새 배포 → 웹 앱</b>, 실행: <b>나</b>, 액세스: <b>모든 사용자</b> → 권한 승인<br>업데이트: <b>배포 → 배포 관리 → ✎ → 버전: 새 버전 → 배포</b> (URL 그대로)</li>
+          <li><b>웹 앱 URL</b>을 아래에 붙여넣기 → <b>연결 테스트</b></li>
         </ol>
+        <p class="ed-hint">같이 쓰는 사람은 같은 URL·비밀번호만 입력하면 됩니다(코드 설치 불필요). 이 설정은 지갑 공유에도 쓰입니다.</p>
         <label class="ed-label">비밀번호(TOKEN)</label>
         <input class="input" id="cfgToken" type="password" autocomplete="off">
         <button type="button" class="btn ghost wide ed-copy" id="cfgCopy">Apps Script 코드 복사</button>
@@ -68,43 +69,10 @@
     </div>
   </div>`);
 
-  // ---------- Apps Script source (also in gas/Code.gs) ----------
-  const GAS_CODE = `const TOKEN = '여기에-비밀번호'; // ← 나만 아는 비밀번호로 바꾸세요
-
-function doPost(e) {
-  try {
-    const d = JSON.parse(e.postData.contents);
-    if (d.token !== TOKEN) return out({ ok: false, error: '비밀번호가 맞지 않습니다' });
-    if (d.ping) return out({ ok: true, name: SpreadsheetApp.getActive().getName() });
-    const sh = SpreadsheetApp.getActive().getSheets().find(s => String(s.getSheetId()) === String(d.gid));
-    if (!sh) return out({ ok: false, error: '시트(gid)를 찾을 수 없습니다' });
-    const lock = LockService.getScriptLock();
-    lock.waitLock(10000);
-    try {
-      const norm = v => String(v == null ? '' : v).replace(/\\r/g, '').trim();
-      let cell = sh.getRange(d.row + 1, d.col + 1);
-      if (norm(cell.getDisplayValue()) !== norm(d.oldValue)) {
-        const hits = [];
-        if (norm(d.oldValue)) sh.getDataRange().getDisplayValues().forEach((r, i) => r.forEach((v, j) => {
-          if (norm(v) === norm(d.oldValue)) hits.push([i + 1, j + 1]);
-        }));
-        if (hits.length !== 1) return out({ ok: false, conflict: true, error: '그 사이 시트 내용이 바뀌었습니다. 새로고침 후 다시 시도하세요' });
-        cell = sh.getRange(hits[0][0], hits[0][1]);
-      }
-      cell.setValue(d.value);
-      return out({ ok: true, cell: cell.getA1Notation() });
-    } finally {
-      lock.releaseLock();
-    }
-  } catch (err) {
-    return out({ ok: false, error: String(err) });
-  }
-}
-
-function out(o) {
-  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
-}
-`;
+  // ---------- Apps Script source: served from gas/Code.gs (single source of truth) ----------
+  const loadGasCode = () => fetch('gas/Code.gs', { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(r.status); return r.text(); });
+  let gasCode = '';
+  const prefetchGas = () => loadGasCode().then(t => (gasCode = t)).catch(() => {});
 
   // ---------- sheet access ----------
   async function fetchRaw() {
@@ -205,7 +173,7 @@ function out(o) {
     if (q('#edTheme').value !== orig.theme) jobs.push({ row: L.themeRow, oldValue: orig.theme, value: q('#edTheme').value });
     if (L.sumRow >= 0 && q('#edSum').value !== orig.sum) jobs.push({ row: L.sumRow, oldValue: orig.sum, value: q('#edSum').value });
     if (L.detailRow >= 0 && q('#edText').value !== orig.detail) jobs.push({ row: L.detailRow, oldValue: orig.detail, value: q('#edText').value });
-    if (!jobs.length) return toast('바뀐 내용이 없습니다');
+    if (!jobs.length) return toast('바뀜 내용이 없습니다');
     const btn = q('#edSave'); btn.disabled = true;
     status(q('#edStatus'), '저장 중…');
     try {
@@ -232,14 +200,16 @@ function out(o) {
   function openCfg() {
     const c = cfg();
     q('#cfgUrl').value = c.url; q('#cfgToken').value = c.token;
-    status(q('#cfgStatus'), '');
+    status(q('#cfgStatus'), ''); prefetchGas();
     q('#cfgWrap').hidden = false; document.body.classList.add('ed-open');
   }
   async function copyCode() {
     const token = q('#cfgToken').value.trim();
     if (!token) { status(q('#cfgStatus'), '먼저 비밀번호를 입력하세요 (코드에 자동으로 들어갑니다)', true); return q('#cfgToken').focus(); }
     if (/['\\\n]/.test(token)) return status(q('#cfgStatus'), '비밀번호에 따옴표·역슬래시는 쓸 수 없습니다', true);
-    const code = GAS_CODE.replace("'여기에-비밀번호'", `'${token}'`);
+    let code;
+    try { code = (gasCode || await loadGasCode()).replace("'여기에-비밀번호'", `'${token}'`); }
+    catch { return status(q('#cfgStatus'), '코드를 불러오지 못했습니다 — 온라인 상태에서 다시 시도하세요', true); }
     ls.set('tw.gasToken', token);
     status(q('#cfgStatus'), '코드 복사됨 → Apps Script에 붙여넣으세요');
     try { await navigator.clipboard.writeText(code); toast('코드를 복사했습니다'); }
@@ -270,7 +240,7 @@ function out(o) {
       const j = await r.json();
       if (!j.ok) throw new Error(j.error || '실패');
       ls.set('tw.gasUrl', c.url); ls.set('tw.gasToken', c.token);
-      status(q('#cfgStatus'), `연결됨 · "${j.name}" (설정 저장됨)`);
+      status(q('#cfgStatus'), `연결됨 · "${j.name}" (설정 저장됨)${j.wallet ? '' : ' · ⚠ 지갑 공유는 코드 업데이트 필요'}`);
     } catch (e) { status(q('#cfgStatus'), '연결 실패: ' + (e.message || e), true); }
   });
 
